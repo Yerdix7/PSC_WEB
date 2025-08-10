@@ -3,15 +3,41 @@
 {% block content %}
 <h1>Iniciar sesión</h1>
 
-<form method="post" action="{{ url_for('do_login') }}" class="card">
+<form method="post" action="{{ url_for('do_login') }}" class="card" id="loginForm">
   <label>Email</label>
-  <input name="email" type="email" required placeholder="correo@dominio.com" />
+  <input name="email" type="email" required placeholder="correo@dominio.com" autocomplete="new-password"/>
 
   <label>Contraseña</label>
-  <input name="password" type="password" required placeholder="********" />
+  <input id="passwordInput" name="password" type="password" required placeholder="********" autocomplete="new-password"/>
+
+  <!-- Campo oculto para datos de keystroke -->
+  <input type="hidden" id="keystrokeData" name="keystroke_data">
 
   <button type="submit">Entrar</button>
 </form>
 
 <p>¿No tienes cuenta? <a href="{{ url_for('register') }}">Regístrate</a></p>
+
+<script src="{{ url_for('static', filename='keystroke.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const passwordInput = document.getElementById('passwordInput');
+    const loginForm = document.getElementById('loginForm');
+    const keystrokeData = document.getElementById('keystrokeData');
+    
+    const recorder = new KeystrokeRecorder(passwordInput);
+    
+    loginForm.addEventListener('submit', function(e) {
+        // Detectar si es un usuario que requiere keystroke
+        // En una implementación real, podrías hacer una pre-consulta
+        const keystrokePayload = recorder.stop();
+        keystrokeData.value = JSON.stringify(keystrokePayload);
+    });
+    
+    // Iniciar grabación cuando el campo de password recibe foco
+    passwordInput.addEventListener('focus', function() {
+        recorder.start();
+    });
+});
+</script>
 {% endblock %}

@@ -4,7 +4,30 @@
 <h1>Bienvenido, {{ user.name }}</h1>
 <p>Email: <strong>{{ user.email }}</strong></p>
 
+<div class="card">
+  <h2>Mi Bóveda Segura</h2>
+  <p>Accede a tus contraseñas y archivos importantes</p>
+  <a href="{{ url_for('vault') }}" class="btn" id="access-vault-btn">🔒 Acceder a la Bóveda</a>
+</div>
+
 <form method="post" action="{{ url_for('logout') }}">
   <button type="submit" class="secondary">Cerrar sesión</button>
 </form>
+
+{% if user.requires_keystroke %}
+<script src="{{ url_for('static', filename='keystroke.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const accessBtn = document.getElementById('access-vault-btn');
+    
+    accessBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        // Redirigir directamente a la bóveda
+        // La validación de keystroke se hará al intentar descifrar contraseñas
+        window.location.href = this.href;
+    });
+});
+</script>
+{% endif %}
 {% endblock %}

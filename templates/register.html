@@ -3,38 +3,184 @@
 {% block content %}
 <h1>Crear cuenta</h1>
 
-<form method="post" action="{{ url_for('do_register') }}" class="card" id="registerForm">
+<form method="post" action="{{ url_for('do_register') }}" class="card" id="registerForm" autocomplete="off" spellcheck="false">
+  
   <label>Nombre</label>
-  <input name="name" required minlength="3" maxlength="100" />
-
+  <input name="name" required minlength="3" maxlength="100">
+  
   <label>Email</label>
-  <input name="email" type="email" required />
+  <input name="email" type="email" required>
 
-  <label>Contraseña (se medirá el timing)</label>
-  <input id="pwd" name="passwordu" type="password" required minlength="8" />
+  <div id="practice-section">
+    <label>
+      <div id="progress-bar" style="height:6px; background:#ddd; margin:4px 0; border-radius:3px;">
+        <div id="progress-fill" style="height:100%; width:0%; background:#4caf50; transition:width 0.3s;"></div>
+      </div>
+      <span id="practice-label">Practica tu contraseña (Intento 1/3)</span>
+    </label>
+    <input id="practice-password" type="password" required minlength="8" autocomplete="new-password">
+    <div id="practice-feedback" class="feedback"></div>
+    <div id="keystroke-display">
+      Última tecla: <span id="last-key">-</span> | 
+      Duración: <span id="key-duration">0</span> ms
+    </div>
+  </div>
 
+  <label>Contraseña final</label>
+  <input id="final-password" name="passwordu" type="password" required minlength="8" disabled>
+  
   <label>Secreto (opcional)</label>
-  <input name="secretu" />
+  <input name="secretu">
 
-  <!-- Hidden para enviar el JSON de keystroke -->
-  <input type="hidden" id="tpu_json" name="tpu_json" />
+  <!-- Campo oculto para los datos de keystroke validados -->
+  <input type="hidden" id="keystroke-data" name="tpu_json">
 
-  <button type="submit">Registrarse</button>
+  <button type="submit" id="submit-btn" disabled>Registrarse</button>
 </form>
 
 <script src="{{ url_for('static', filename='keystroke.js') }}"></script>
 <script>
-  // Inicializa el capturador para el input #pwd
-  const pwdInput = document.getElementById('pwd');
-  const hidden = document.getElementById('tpu_json');
-  const form = document.getElementById('registerForm');
+  document.addEventListener('DOMContentLoaded', function() {
+    const practiceInput = document.getElementById('practice-password');
+    const finalInput = document.getElementById('final-password');
+    const feedbackEl = document.getElementById('practice-feedback');
+    const progressFill = document.getElementById('progress-fill');
+    const practiceLabel = document.getElementById('practice-label');
+    const submitBtn = document.getElementById('submit-btn');
+    const keystrokeData = document.getElementById('keystroke-data');
+    
+    const recorder = new KeystrokeRecorder(practiceInput);
+    let attempts = [];
+    let currentAttempt = 0;
 
-  const recorder = KeystrokeRecorder(pwdInput);
+    // Actualizar display de teclas
+    practiceInput.addEventListener('keyup', function() {
+      const data = recorder.export();
+      if (data.keystroke_timings.length > 0) {
+        const lastKey = data.keystroke_timings[data.keystroke_timings.length - 1];
+        document.getElementById('last-key').textContent = `"${lastKey.key}"`;
+        document.getElementById('key-duration').textContent = 
+          lastKey.release_time - lastKey.press_time;
+      }
+    });
 
-  form.addEventListener('submit', (e) => {
-    // empaqueta el JSON justo antes de enviar
-    const payload = recorder.export();
-    hidden.value = JSON.stringify(payload);
+    // Manejar el envío de cada intento
+    practiceInput.addEventListener('blur', async function() {
+      if (practiceInput.value.length >= 8) {
+        const attemptData = recorder.stop();
+        currentAttempt++;
+        
+        // Validación local antes de enviar al servidor
+        const validation = validateAttemptLocally(attemptData);
+        if (!validation.valid) {
+          feedbackEl.textContent = validation.message;
+          feedbackEl.style.color = "red";
+          resetPractice();
+          return;
+        }
+        
+        attempts.push(attemptData);
+        
+        // Actualizar UI
+        progressFill.style.width = `${(currentAttempt / 3) * 100}%`;
+        practiceLabel.textContent = `Practica tu contraseña (Intento ${currentAttempt}/3)`;
+        
+        if (currentAttempt >= 3) {
+          // Validar consistencia entre los 3 intentos
+          const consistency = validateConsistency(attempts);
+          
+          if (consistency.valid) {
+            feedbackEl.textContent = "¡Patrón validado! Ahora ingresa tu contraseña final";
+            feedbackEl.style.color = "green";
+            finalInput.disabled = false;
+            practiceInput.disabled = true;
+            
+            // Preparar datos para la API
+            keystrokeData.value = JSON.stringify({
+              password: attempts[0].password,
+              keystroke_timings: attempts[0].keystroke_timings,
+              total_time: attempts[0].total_time
+            });
+          } else {
+            feedbackEl.textContent = consistency.message;
+            feedbackEl.style.color = "red";
+            resetPractice();
+          }
+        } else {
+          feedbackEl.textContent = `Intento ${currentAttempt} completado. Siguiente intento.`;
+          practiceInput.value = '';
+          recorder.start();
+        }
+      }
+    });
+
+    // Habilitar submit cuando la contraseña final coincida
+    finalInput.addEventListener('input', function() {
+      if (finalInput.value.length >= 8 && 
+          attempts.length > 0 && 
+          finalInput.value === attempts[0].password) {
+        submitBtn.disabled = false;
+      } else {
+        submitBtn.disabled = true;
+      }
+    });
+
+    function resetPractice() {
+      currentAttempt = 0;
+      attempts = [];
+      practiceInput.value = '';
+      finalInput.value = '';
+      finalInput.disabled = true;
+      submitBtn.disabled = true;
+      progressFill.style.width = '0%';
+      practiceLabel.textContent = 'Practica tu contraseña (Intento 1/3)';
+      practiceInput.disabled = false;
+      recorder.start();
+    }
+    
+    function validateAttemptLocally(attempt) {
+      // Validaciones básicas de un solo intento
+      if (!attempt.keystroke_timings || attempt.keystroke_timings.length < 8) {
+        return { valid: false, message: "Patrón demasiado corto" };
+      }
+      
+      const analysis = analyzeKeystrokePattern(attempt);
+      if (!analysis.valid) {
+        return { valid: false, message: "Patrón no válido: " + analysis.anomalies.join(", ") };
+      }
+      
+      return { valid: true, message: "Intento válido" };
+    }
+    
+    function validateConsistency(attempts) {
+      // Comparar los 3 intentos entre sí
+      const comp1 = compareKeystrokePatterns(attempts[0], attempts[1]);
+      const comp2 = compareKeystrokePatterns(attempts[0], attempts[2]);
+      
+      if (!comp1.similar || !comp2.similar) {
+        return { 
+          valid: false, 
+          message: "Patrones inconsistentes. Por favor, inténtalo de nuevo." 
+        };
+      }
+      
+      return { valid: true, message: "Patrones consistentes" };
+    }
+    
+    // Iniciar el primer intento
+    recorder.start();
   });
 </script>
+
+<style>
+  .feedback {
+    margin: 8px 0;
+    font-size: 0.9em;
+  }
+  #keystroke-display {
+    font-size: 0.8em;
+    color: #666;
+    margin-bottom: 12px;
+  }
+</style>
 {% endblock %}
