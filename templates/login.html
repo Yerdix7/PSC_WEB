@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Login · PSC{% endblock %}
+{% block content %}
+<h1>Iniciar sesión</h1>
+
+<form method="post" action="{{ url_for('do_login') }}" class="card">
+  <label>Email</label>
+  <input name="email" type="email" required placeholder="correo@dominio.com" />
+
+  <label>Contraseña</label>
+  <input name="password" type="password" required placeholder="********" />
+
+  <button type="submit">Entrar</button>
+</form>
+
+<p>¿No tienes cuenta? <a href="{{ url_for('register') }}">Regístrate</a></p>
+{% endblock %}

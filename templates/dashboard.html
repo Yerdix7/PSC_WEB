@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · PSC{% endblock %}
+{% block content %}
+<h1>Bienvenido, {{ user.name }}</h1>
+<p>Email: <strong>{{ user.email }}</strong></p>
+
+<form method="post" action="{{ url_for('logout') }}">
+  <button type="submit" class="secondary">Cerrar sesión</button>
+</form>
+{% endblock %}

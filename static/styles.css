@@ -1,0 +1,13 @@
+body { font-family: system-ui, Arial, sans-serif; background:#f7f7f8; margin:0; }
+.nav { background:#0a7; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; }
+.nav a { color:#fff; text-decoration:none; font-weight:700; }
+.container { max-width:720px; margin:24px auto; padding:0 16px; }
+h1 { margin-top:0; }
+.card { background:#fff; padding:16px; border-radius:12px; box-shadow: 0 10px 20px rgba(0,0,0,.05); display:grid; gap:10px; }
+input { padding:10px 12px; border-radius:10px; border:1px solid #ddd; }
+button { padding:12px 14px; border:none; border-radius:10px; background:#0a7; color:#fff; font-weight:700; cursor:pointer; }
+button.secondary { background:#999; }
+.alert { padding:10px 12px; border-radius:10px; margin-bottom:10px; }
+.alert.success { background:#e6ffed; color:#18794e; }
+.alert.danger { background:#ffe6e6; color:#b42318; }
+.alert.info { background:#e8f1ff; color:#1849a9; }

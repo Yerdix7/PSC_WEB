@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Registro · PSC{% endblock %}
+{% block content %}
+<h1>Crear cuenta</h1>
+
+<form method="post" action="{{ url_for('do_register') }}" class="card" id="registerForm">
+  <label>Nombre</label>
+  <input name="name" required minlength="3" maxlength="100" />
+
+  <label>Email</label>
+  <input name="email" type="email" required />
+
+  <label>Contraseña (se medirá el timing)</label>
+  <input id="pwd" name="passwordu" type="password" required minlength="8" />
+
+  <label>Secreto (opcional)</label>
+  <input name="secretu" />
+
+  <!-- Hidden para enviar el JSON de keystroke -->
+  <input type="hidden" id="tpu_json" name="tpu_json" />
+
+  <button type="submit">Registrarse</button>
+</form>
+
+<script src="{{ url_for('static', filename='keystroke.js') }}"></script>
+<script>
+  // Inicializa el capturador para el input #pwd
+  const pwdInput = document.getElementById('pwd');
+  const hidden = document.getElementById('tpu_json');
+  const form = document.getElementById('registerForm');
+
+  const recorder = KeystrokeRecorder(pwdInput);
+
+  form.addEventListener('submit', (e) => {
+    // empaqueta el JSON justo antes de enviar
+    const payload = recorder.export();
+    hidden.value = JSON.stringify(payload);
+  });
+</script>
+{% endblock %}
