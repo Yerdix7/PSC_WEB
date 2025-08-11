@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from dotenv import load_dotenv
 import requests
 import json
+from flask import make_response  
 
 load_dotenv()
 
@@ -385,24 +386,76 @@ def vault():
 
 @app.route("/verify-vault-access", methods=["POST"])
 def verify_vault_access():
-    """Verificar acceso a la bóveda con keystroke"""
+    """Verificar acceso con contraseña maestra"""
     if "user" not in session:
         return jsonify({"success": False, "message": "No autenticado"})
     
     password = request.form.get("password")
     keystroke_data = request.form.get("keystroke_data")
     
-    data = {
-        "password": password,
-        "keystroke_data": keystroke_data,
-        "user_email": session["user"]["email"]
-    }
-    
+    # Verificar contraseña usando tu API
     try:
-        r = requests.post(f"{API_BASE}/api/users/vault/verify-access/", data=data)
-        return jsonify(r.json())
+        data = {
+            "username": session["user"]["email"],
+            "password": password,
+            "keystroke_data": keystroke_data
+        }
+        
+        r = requests.post(f"{API_BASE}/api/users/login/", data=data)
+        
+        if r.status_code == 200:
+            return jsonify({"success": True, "message": "Acceso autorizado"})
+        else:
+            return jsonify({"success": False, "message": "Verificación fallida"})
+            
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {e}"})
+
+def analyze_pattern(keystroke_data):
+    """
+    Analiza un patrón individual de keystroke
+    """
+    timings = keystroke_data.get('keystroke_timings', [])
+    
+    if len(timings) == 0:
+        return {"valid": False, "reason": "Sin datos de timing"}
+    
+    # Calcular métricas básicas
+    dwell_times = []
+    
+    for timing in timings:
+        dwell = timing.get('release_time', 0) - timing.get('press_time', 0)
+        if dwell > 0:
+            dwell_times.append(dwell)
+    
+    # Validaciones básicas
+    if not dwell_times:
+        return {"valid": False, "reason": "No hay dwell times válidos"}
+    
+    avg_dwell = sum(dwell_times) / len(dwell_times)
+    
+    # Criterios de validación
+    valid = True
+    reason = "Patrón válido"
+    
+    if avg_dwell < 30:
+        valid = False
+        reason = "Dwell time promedio demasiado corto"
+    elif avg_dwell > 800:
+        valid = False
+        reason = "Dwell time promedio demasiado largo"
+    
+    extreme_dwells = sum(1 for d in dwell_times if d > 1000 or d < 20)
+    if extreme_dwells > len(dwell_times) * 0.3:
+        valid = False
+        reason = "Demasiados dwell times extremos"
+    
+    return {
+        "valid": valid,
+        "reason": reason,
+        "avg_dwell": round(avg_dwell, 2),
+        "total_keys": len(timings)
+    }
 
 @app.route("/save-password", methods=["POST"])
 def save_password():
@@ -437,30 +490,51 @@ def get_passwords():
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {e}"})
 
-@app.route('/decrypt-password/<int:password_id>', methods=['GET'])
+@app.route('/decrypt-password/<int:password_id>', methods=['POST'])
 def decrypt_password(password_id):
-    if 'token' not in session:
-        return jsonify({'error': 'No autorizado'}), 401
+    if 'user' not in session:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
     
     try:
+        password = request.form.get('password')
+        keystroke_data = request.form.get('keystroke_data')
+        
+        print(f"🔍 DEBUG: Desencriptando password_id={password_id}")
+        print(f"🔍 DEBUG: password length={len(password) if password else 0}")
+        print(f"🔍 DEBUG: user_id={session['user']['id']}")
+        
         headers = {
             'Authorization': f'Bearer {session["token"]}',
-            'Accept': 'application/json'
+            'Content-Type': 'application/x-www-form-urlencoded'
         }
         
-        response = requests.get(
+        data = {
+            'password': password,
+            'keystroke_data': keystroke_data,
+            'user_id': session['user']['id']
+        }
+        
+        response = requests.post(
             f"{API_BASE}/api/passwords/decrypt/{password_id}",
+            data=data,
             headers=headers
         )
         
-        if response.status_code != 200:
-            return jsonify({'error': 'Error al descifrar contraseña'}), response.status_code
-            
-        return jsonify(response.json())
+        print(f"🔍 DEBUG: API response status={response.status_code}")
+        print(f"🔍 DEBUG: API response={response.text}")
+        
+        if response.status_code == 200:
+            return jsonify(response.json())
+        else:
+            return jsonify({
+                'success': False, 
+                'message': f'Error API: {response.status_code}'
+            })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+        print(f"🔍 DEBUG: Exception={str(e)}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    
 @app.route("/delete-password/<int:password_id>", methods=["DELETE"])
 def delete_password(password_id):
     """Eliminar una contraseña"""
@@ -540,5 +614,6 @@ def delete_file(file_id):
     except Exception as e:
         return jsonify({"success": False, "message": f"Error: {e}"})
     
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

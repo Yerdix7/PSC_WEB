@@ -1,55 +1,85 @@
-{% extends "base.html" %}
-{% block title %}Mi Bóveda · PSC{% endblock %}
+{% extends "base.html" %} 
+{% block title %}Mi Bóveda · PSC{% endblock %} 
 {% block content %}
 <h1>🔒 Mi Bóveda Segura</h1>
 
-<div style="display: flex; gap: 20px; margin-bottom: 20px;">
-  <button onclick="showSection('passwords')" class="tab-btn active" id="passwords-tab">Contraseñas</button>
-  <button onclick="showSection('files')" class="tab-btn" id="files-tab">Archivos</button>
+<div style="display: flex; gap: 20px; margin-bottom: 20px">
+  <button onclick="showSection('passwords')" class="tab-btn active" id="passwords-tab">
+    Contraseñas
+  </button>
+  <button onclick="showSection('files')" class="tab-btn" id="files-tab">
+    Archivos
+  </button>
 </div>
 
 <!-- Sección de Contraseñas -->
 <div id="passwords-section" class="vault-section">
   <div class="card">
-    <h2>Mis Contraseñas</h2>
-    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2>Mis Contraseñas</h2>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span id="passwords-status" style="font-size: 14px; color: #666;">Contraseñas ocultas</span>
+        <button id="toggle-visibility-btn" onclick="togglePasswordsVisibility()" class="toggle-btn">
+          <span id="toggle-icon">👁️</span> <span id="toggle-text">Mostrar Todas</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Formulario para nueva contraseña -->
     <form id="password-form" class="form-inline">
-      <input id="site-input" placeholder="Sitio web (ej: Gmail, Facebook)" required>
-      <input id="credentials-input" placeholder="usuario:contraseña" required>
+      <input id="site-input" placeholder="Sitio web (ej: Gmail, Facebook)" required />
+      <input id="credentials-input" placeholder="usuario:contraseña" required />
       <button type="submit">Guardar</button>
     </form>
-    
+
+    <!-- Modal de autenticación (solo se muestra la primera vez) -->
+    <div id="auth-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1002;">
+      <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 30px; border-radius: 8px; min-width: 400px; text-align: center;">
+        <h3>🔐 Verificación de Identidad</h3>
+        <p>Ingresa tu contraseña maestra para acceder a tus contraseñas guardadas</p>
+        <form id="auth-form" style="margin: 20px 0;">
+          <input type="password" id="master-password" placeholder="Contraseña maestra" required style="width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;">
+          <input type="hidden" id="auth-keystroke-data" name="keystroke_data">
+        </form>
+        <div style="display: flex; gap: 10px; justify-content: center;">
+          <button onclick="authenticateUser()" style="flex: 1; padding: 12px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            🔓 Verificar
+          </button>
+          <button onclick="closeAuthModal()" style="flex: 1; padding: 12px; background: #666; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            Cancelar
+          </button>
+        </div>
+        <div id="auth-error" style="color: #dc3545; margin-top: 10px; display: none;"></div>
+      </div>
+    </div>
+
     <div id="passwords-list">
       <!-- Lista de contraseñas cargada dinámicamente -->
     </div>
   </div>
 </div>
 
-<!-- Sección de Archivos -->
-<div id="files-section" class="vault-section" style="display:none;">
+<!-- Sección de Archivos (sin cambios) -->
+<div id="files-section" class="vault-section" style="display: none">
   <div class="card">
     <h2>Mis Archivos Seguros</h2>
-    
-    <!-- Formulario para subir archivo -->
     <form id="file-form" enctype="multipart/form-data">
-      <input type="file" id="file-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" required>
+      <input type="file" id="file-input" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" required />
       <button type="submit">Subir Archivo</button>
     </form>
-    
-    <div id="files-list">
-      <!-- Lista de archivos cargada dinámicamente -->
-    </div>
+    <div id="files-list"></div>
   </div>
 </div>
 
-<!-- Modal para ver contraseña descifrada -->
-<div id="password-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000;">
-  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; border-radius:8px; min-width:400px;">
-    <h3>Contraseña Descifrada</h3>
-    <div id="decrypted-content" style="background:#f5f5f5; padding:10px; border-radius:4px; margin:10px 0; font-family:monospace;"></div>
-    <button onclick="copyToClipboard()" style="margin-right:10px;">Copiar</button>
-    <button onclick="closePasswordModal()">Cerrar</button>
+<!-- Modal para mostrar contraseña individual -->
+<div id="password-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); z-index: 1001;">
+  <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; min-width: 400px;">
+    <h3>Contraseña</h3>
+    <div id="decrypted-content" style="background: #f5f5f5; padding: 15px; border-radius: 4px; margin: 10px 0; font-family: monospace; font-size: 1.1em; word-break: break-all;"></div>
+    <div style="display: flex; gap: 10px">
+      <button onclick="copyToClipboard()" style="flex: 1">📋 Copiar</button>
+      <button onclick="closePasswordModal()" style="flex: 1; background: #666">Cerrar</button>
+    </div>
   </div>
 </div>
 
@@ -57,339 +87,642 @@
 
 <script src="{{ url_for('static', filename='keystroke.js') }}"></script>
 <script>
-let currentDecryptedPassword = '';
+  let currentDecryptedPassword = "";
+  let passwordsVisible = false;
+  let isAuthenticated = false;
+  let allPasswords = [];
+  let keystrokeRecorder = null;
+  let masterPassword = ""; // Guardar la contraseña verificada
 
-document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener("DOMContentLoaded", function () {
     loadPasswords();
     loadFiles();
-    
+
     // Formulario de contraseñas
-    document.getElementById('password-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        savePassword();
+    document.getElementById("password-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      savePassword();
     });
-    
+
     // Formulario de archivos
-    document.getElementById('file-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        uploadFile();
+    document.getElementById("file-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      uploadFile();
     });
-});
 
-function showSection(section) {
-    // Ocultar todas las secciones
-    document.querySelectorAll('.vault-section').forEach(s => s.style.display = 'none');
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    // Configurar keystroke recorder para autenticación
+    const masterPasswordInput = document.getElementById('master-password');
+    keystrokeRecorder = new KeystrokeRecorder(masterPasswordInput);
     
-    // Mostrar sección seleccionada
-    document.getElementById(section + '-section').style.display = 'block';
-    document.getElementById(section + '-tab').classList.add('active');
-}
+    masterPasswordInput.addEventListener('focus', function() {
+      keystrokeRecorder.start();
+    });
+  });
 
-async function savePassword() {
-    const site = document.getElementById('site-input').value;
-    const credentials = document.getElementById('credentials-input').value;
-    
-    const formData = new FormData();
-    formData.append('site_name', site);
-    formData.append('credentials', credentials);
-    
-    try {
-        const response = await fetch('{{ url_for("save_password") }}', {
-            method: 'POST',
-            body: formData
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            document.getElementById('site-input').value = '';
-            document.getElementById('credentials-input').value = '';
-            loadPasswords();
-            showAlert('Contraseña guardada correctamente', 'success');
-        } else {
-            showAlert(result.message || 'Error al guardar', 'danger');
-        }
-    } catch (error) {
-        showAlert('Error de conexión', 'danger');
+  function showSection(section) {
+    document.querySelectorAll(".vault-section").forEach((s) => (s.style.display = "none"));
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+
+    document.getElementById(section + "-section").style.display = "block";
+    document.getElementById(section + "-tab").classList.add("active");
+  }
+
+  async function togglePasswordsVisibility() {
+    if (!isAuthenticated) {
+      // Primera vez - mostrar modal de autenticación
+      document.getElementById('auth-modal').style.display = 'block';
+      document.getElementById('master-password').focus();
+      return;
     }
-}
 
-async function loadPasswords() {
+    // Ya está autenticado, simplemente alternar visibilidad
+    passwordsVisible = !passwordsVisible;
+    updatePasswordsDisplay();
+  }
+
+  async function authenticateUser() {
+    const password = document.getElementById('master-password').value;
+    const keystrokePayload = keystrokeRecorder.stop();
+    const authError = document.getElementById('auth-error');
+
+    if (!password) {
+      authError.textContent = 'Por favor ingresa tu contraseña';
+      authError.style.display = 'block';
+      return;
+    }
+
     try {
-        const response = await fetch('{{ url_for("get_passwords") }}');
-        const data = await response.json();
+      // Usar tu endpoint existente de verificación
+      const formData = new FormData();
+      formData.append('password', password);
+      formData.append('keystroke_data', JSON.stringify(keystrokePayload));
+
+      const response = await fetch('{{ url_for("verify_vault_access") }}', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        isAuthenticated = true;
+        passwordsVisible = true;
+        masterPassword = password; // Guardar la contraseña verificada
+        closeAuthModal();
+        await loadAllPasswordsDecrypted();
+        updatePasswordsDisplay();
+        showAlert('Autenticación exitosa', 'success');
+      } else {
+        authError.textContent = result.message || 'Contraseña incorrecta';
+        authError.style.display = 'block';
+        // Reiniciar el recorder para el siguiente intento
+        setTimeout(() => {
+          document.getElementById('master-password').focus();
+          keystrokeRecorder.start();
+        }, 100);
+      }
+    } catch (error) {
+      authError.textContent = 'Error de conexión';
+      authError.style.display = 'block';
+    }
+  }
+
+  function closeAuthModal() {
+    document.getElementById('auth-modal').style.display = 'none';
+    document.getElementById('master-password').value = '';
+    document.getElementById('auth-error').style.display = 'none';
+  }
+
+  async function loadAllPasswordsDecrypted() {
+    try {
+      // Obtener lista básica de contraseñas
+      const response = await fetch('{{ url_for("get_passwords") }}');
+      const data = await response.json();
+      
+      if (data.passwords && data.passwords.length > 0) {
+        // Para el modo "mostrar todas", usar contraseñas sin verificación adicional
+        // Ya que el usuario se autenticó una vez
+        allPasswords = data.passwords.map(pwd => ({
+          id: pwd.id,
+          site_name: pwd.site_name,
+          credentials: '••••••••••', // Placeholder inicial
+          created_at: pwd.created_at
+        }));
         
-        const container = document.getElementById('passwords-list');
-        container.innerHTML = '';
-        
-        if (data.passwords && data.passwords.length > 0) {
-            data.passwords.forEach(pwd => {
-                const item = document.createElement('div');
-                item.className = 'password-item';
-                item.innerHTML = `
-                    <div class="password-info">
-                        <strong>${pwd.site_name}</strong>
-                        <small>Guardado: ${new Date(pwd.created_at).toLocaleDateString()}</small>
-                    </div>
-                    <div class="password-actions">
-                        <button onclick="revealPassword(${pwd.id})" class="small">👁️ Ver</button>
-                        <button onclick="copyPasswordDirect(${pwd.id})" class="small">📋 Copiar</button>
-                        <button onclick="deletePassword(${pwd.id})" class="small danger">🗑️</button>
-                    </div>
-                `;
-                container.appendChild(item);
+        // Desencriptar todas usando la contraseña verificada
+        for (let i = 0; i < allPasswords.length; i++) {
+          try {
+            console.log(`Desencriptando contraseña ID: ${allPasswords[i].id}`);
+            const formData = new FormData();
+            formData.append("password", masterPassword);
+            formData.append("keystroke_data", '{"keystroke_timings": [], "password": "' + masterPassword + '"}');
+
+            const decryptResponse = await fetch(`/decrypt-password/${allPasswords[i].id}`, {
+              method: "POST",
+              body: formData,
             });
-        } else {
-            container.innerHTML = '<p>No tienes contraseñas guardadas</p>';
-        }
-    } catch (error) {
-        showAlert('Error cargando contraseñas', 'danger');
-    }
-}
-
-async function revealPassword(id) {
-    try {
-        const response = await fetch(`{{ url_for("decrypt_password") }}/${id}`, {
-            method: 'POST'
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            currentDecryptedPassword = result.credentials;
-            document.getElementById('decrypted-content').textContent = result.credentials;
-            document.getElementById('password-modal').style.display = 'block';
-        } else {
-            showAlert(result.message || 'Error al descifrar', 'danger');
-        }
-    } catch (error) {
-        showAlert('Error de conexión', 'danger');
-    }
-}
-
-async function copyPasswordDirect(id) {
-    try {
-        const response = await fetch(`{{ url_for("decrypt_password") }}/${id}`, {
-            method: 'POST'
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            navigator.clipboard.writeText(result.credentials);
-            showAlert('Contraseña copiada al portapapeles', 'success');
-        } else {
-            showAlert(result.message || 'Error al copiar', 'danger');
-        }
-    } catch (error) {
-        showAlert('Error de conexión', 'danger');
-    }
-}
-
-async function deletePassword(id) {
-    if (confirm('¿Estás seguro de eliminar esta contraseña?')) {
-        try {
-            const response = await fetch(`{{ url_for("delete_password") }}/${id}`, {
-                method: 'DELETE'
-            });
+            const decryptResult = await decryptResponse.json();
             
-            const result = await response.json();
-            if (result.success) {
-                loadPasswords();
-                showAlert('Contraseña eliminada', 'success');
+            console.log(`Resultado para ID ${allPasswords[i].id}:`, decryptResult);
+            
+            if (decryptResult.success) {
+              allPasswords[i].credentials = decryptResult.credentials;
+              console.log(`Contraseña desencriptada: ${decryptResult.credentials}`);
             } else {
-                showAlert(result.message || 'Error al eliminar', 'danger');
+              console.error(`Error desencriptando ${allPasswords[i].id}:`, decryptResult.message);
+              allPasswords[i].credentials = 'Error al desencriptar';
             }
-        } catch (error) {
-            showAlert('Error de conexión', 'danger');
+          } catch (error) {
+            console.error(`Error decrypting password ${allPasswords[i].id}:`, error);
+            allPasswords[i].credentials = 'Error de conexión';
+          }
         }
+      }
+    } catch (error) {
+      console.error('Error loading passwords:', error);
+      showAlert('Error cargando contraseñas', 'danger');
     }
-}
+  }
 
-async function uploadFile() {
-    const fileInput = document.getElementById('file-input');
+  function updatePasswordsDisplay() {
+    const toggleBtn = document.getElementById('toggle-visibility-btn');
+    const toggleIcon = document.getElementById('toggle-icon');
+    const toggleText = document.getElementById('toggle-text');
+    const statusText = document.getElementById('passwords-status');
+
+    if (passwordsVisible) {
+      toggleIcon.textContent = '🙈';
+      toggleText.textContent = 'Ocultar Todas';
+      statusText.textContent = 'Contraseñas visibles';
+      statusText.style.color = '#28a745';
+    } else {
+      toggleIcon.textContent = '👁️';
+      toggleText.textContent = 'Mostrar Todas';
+      statusText.textContent = 'Contraseñas ocultas';
+      statusText.style.color = '#666';
+    }
+
+    renderPasswordsList();
+  }
+
+  function renderPasswordsList() {
+    const container = document.getElementById("passwords-list");
+    container.innerHTML = "";
+
+    if (allPasswords && allPasswords.length > 0) {
+      allPasswords.forEach((pwd) => {
+        const item = document.createElement("div");
+        item.className = "password-item";
+        
+        const credentialsDisplay = passwordsVisible 
+          ? `<div class="credentials-display">${pwd.credentials}</div>`
+          : '';
+
+        item.innerHTML = `
+          <div class="password-info">
+            <strong>${pwd.site_name}</strong>
+            <small>Guardado: ${new Date(pwd.created_at).toLocaleDateString()}</small>
+            ${credentialsDisplay}
+          </div>
+          <div class="password-actions">
+            ${passwordsVisible ? 
+              `<button onclick="copyPasswordDirect('${pwd.credentials}')" class="action-btn copy-btn">📋 Copiar</button>` :
+              `<button onclick="showPasswordModal('${pwd.credentials}', '${pwd.site_name}')" class="action-btn view-btn">👁️ Ver</button>`
+            }
+            <button onclick="deletePassword(${pwd.id})" class="action-btn delete-btn">🗑️ Eliminar</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    } else {
+      container.innerHTML = "<p>No tienes contraseñas guardadas</p>";
+    }
+  }
+
+  async function loadPasswords() {
+    try {
+      const response = await fetch('{{ url_for("get_passwords") }}');
+      const data = await response.json();
+
+      if (data.passwords && data.passwords.length > 0) {
+        // Solo guardar información básica si no estamos autenticados
+        if (!isAuthenticated) {
+          allPasswords = data.passwords.map(pwd => ({
+            id: pwd.id,
+            site_name: pwd.site_name,
+            created_at: pwd.created_at,
+            credentials: '••••••••••'  // Placeholder
+          }));
+          renderPasswordsList();
+        }
+      } else {
+        document.getElementById("passwords-list").innerHTML = "<p>No tienes contraseñas guardadas</p>";
+      }
+    } catch (error) {
+      showAlert("Error cargando contraseñas", "danger");
+    }
+  }
+
+  function showPasswordModal(credentials, siteName) {
+    currentDecryptedPassword = credentials;
+    document.getElementById("decrypted-content").textContent = credentials;
+    document.getElementById("password-modal").style.display = "block";
+  }
+
+  function copyPasswordDirect(credentials) {
+    navigator.clipboard.writeText(credentials);
+    showAlert("Contraseña copiada al portapapeles", "success");
+  }
+
+  async function savePassword() {
+    const site = document.getElementById("site-input").value;
+    const credentials = document.getElementById("credentials-input").value;
+
+    const formData = new FormData();
+    formData.append("site_name", site);
+    formData.append("credentials", credentials);
+
+    try {
+      const response = await fetch('{{ url_for("save_password") }}', {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        document.getElementById("site-input").value = "";
+        document.getElementById("credentials-input").value = "";
+        
+        // Recargar contraseñas
+        if (isAuthenticated) {
+          await loadAllPasswordsDecrypted();
+        } else {
+          await loadPasswords();
+        }
+        updatePasswordsDisplay();
+        showAlert("Contraseña guardada correctamente", "success");
+      } else {
+        showAlert(result.message || "Error al guardar", "danger");
+      }
+    } catch (error) {
+      showAlert("Error de conexión", "danger");
+    }
+  }
+
+  async function deletePassword(id) {
+    if (confirm("¿Estás seguro de eliminar esta contraseña?")) {
+      try {
+        const response = await fetch(`/delete-password/${id}`, {
+          method: "DELETE",
+        });
+
+        const result = await response.json();
+        if (result.success) {
+          // Actualizar la lista local
+          allPasswords = allPasswords.filter(pwd => pwd.id !== id);
+          updatePasswordsDisplay();
+          showAlert("Contraseña eliminada", "success");
+        } else {
+          showAlert(result.message || "Error al eliminar", "danger");
+        }
+      } catch (error) {
+        showAlert("Error de conexión", "danger");
+      }
+    }
+  }
+
+  // Funciones para archivos (sin cambios)
+  async function uploadFile() {
+    const fileInput = document.getElementById("file-input");
     const file = fileInput.files[0];
-    
+
     if (!file) return;
-    
+
     const formData = new FormData();
-    formData.append('file', file);
-    
+    formData.append("file", file);
+
     try {
-        const response = await fetch('{{ url_for("upload_file") }}', {
-            method: 'POST',
-            body: formData
+      const response = await fetch('{{ url_for("upload_file") }}', {
+        method: "POST",
+        body: formData,
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        fileInput.value = "";
+        loadFiles();
+        showAlert("Archivo subido correctamente", "success");
+      } else {
+        showAlert(result.message || "Error al subir archivo", "danger");
+      }
+    } catch (error) {
+      showAlert("Error de conexión", "danger");
+    }
+  }
+
+  async function loadFiles() {
+    try {
+      const response = await fetch('{{ url_for("get_files") }}');
+      const data = await response.json();
+
+      const container = document.getElementById("files-list");
+      container.innerHTML = "";
+
+      if (data.files && data.files.length > 0) {
+        data.files.forEach((file) => {
+          const item = document.createElement("div");
+          item.className = "file-item";
+          item.innerHTML = `
+            <div class="file-info">
+              <strong>${file.nombrearchivo}</strong>
+              <small>${file.tipoarchivo} • ${new Date(file.created_at).toLocaleDateString()}</small>
+            </div>
+            <div class="file-actions">
+              <button onclick="downloadFile(${file.id})" class="action-btn download-btn">⬇️ Descargar</button>
+              <button onclick="deleteFile(${file.id})" class="action-btn delete-btn">🗑️ Eliminar</button>
+            </div>
+          `;
+          container.appendChild(item);
         });
-        
+      } else {
+        container.innerHTML = "<p>No tienes archivos guardados</p>";
+      }
+    } catch (error) {
+      showAlert("Error cargando archivos", "danger");
+    }
+  }
+
+  async function downloadFile(id) {
+    window.open(`/download-file/${id}`, "_blank");
+  }
+
+  async function deleteFile(id) {
+    if (confirm("¿Estás seguro de eliminar este archivo?")) {
+      try {
+        const response = await fetch(`/delete-file/${id}`, {
+          method: "DELETE",
+        });
+
         const result = await response.json();
         if (result.success) {
-            fileInput.value = '';
-            loadFiles();
-            showAlert('Archivo subido correctamente', 'success');
+          loadFiles();
+          showAlert("Archivo eliminado", "success");
         } else {
-            showAlert(result.message || 'Error al subir archivo', 'danger');
+          showAlert(result.message || "Error al eliminar", "danger");
         }
-    } catch (error) {
-        showAlert('Error de conexión', 'danger');
+      } catch (error) {
+        showAlert("Error de conexión", "danger");
+      }
     }
-}
+  }
 
-async function loadFiles() {
-    try {
-        const response = await fetch('{{ url_for("get_files") }}');
-        const data = await response.json();
-        
-        const container = document.getElementById('files-list');
-        container.innerHTML = '';
-        
-        if (data.files && data.files.length > 0) {
-            data.files.forEach(file => {
-                const item = document.createElement('div');
-                item.className = 'file-item';
-                item.innerHTML = `
-                    <div class="file-info">
-                        <strong>${file.nombrearchivo}</strong>
-                        <small>${file.tipoarchivo} • ${new Date(file.created_at).toLocaleDateString()}</small>
-                    </div>
-                    <div class="file-actions">
-                        <button onclick="downloadFile(${file.id})" class="small">⬇️ Descargar</button>
-                        <button onclick="deleteFile(${file.id})" class="small danger">🗑️</button>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        } else {
-            container.innerHTML = '<p>No tienes archivos guardados</p>';
-        }
-    } catch (error) {
-        showAlert('Error cargando archivos', 'danger');
-    }
-}
-
-async function downloadFile(id) {
-    window.open(`{{ url_for("download_file") }}/${id}`, '_blank');
-}
-
-async function deleteFile(id) {
-    if (confirm('¿Estás seguro de eliminar este archivo?')) {
-        try {
-            const response = await fetch(`{{ url_for("delete_file") }}/${id}`, {
-                method: 'DELETE'
-            });
-            
-            const result = await response.json();
-            if (result.success) {
-                loadFiles();
-                showAlert('Archivo eliminado', 'success');
-            } else {
-                showAlert(result.message || 'Error al eliminar', 'danger');
-            }
-        } catch (error) {
-            showAlert('Error de conexión', 'danger');
-        }
-    }
-}
-
-function copyToClipboard() {
+  function copyToClipboard() {
     navigator.clipboard.writeText(currentDecryptedPassword);
-    showAlert('Copiado al portapapeles', 'success');
+    showAlert("Copiado al portapapeles", "success");
     closePasswordModal();
-}
+  }
 
-function closePasswordModal() {
-    document.getElementById('password-modal').style.display = 'none';
-    document.getElementById('vault-password').value = '';
-    document.getElementById('vault-feedback').textContent = '';
-    currentDecryptedPassword = '';
-}
+  function closePasswordModal() {
+    document.getElementById("password-modal").style.display = "none";
+    currentDecryptedPassword = "";
+  }
 
-function showAlert(message, type) {
-    // Crear alerta temporal
-    const alert = document.createElement('div');
+  function showAlert(message, type) {
+    const alert = document.createElement("div");
     alert.className = `alert ${type}`;
     alert.textContent = message;
-    alert.style.position = 'fixed';
-    alert.style.top = '20px';
-    alert.style.right = '20px';
-    alert.style.zIndex = '9999';
+    alert.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 9999;
+      padding: 10px 15px;
+      border-radius: 4px;
+      color: white;
+      font-weight: bold;
+      ${type === "success" ? "background: #28a745;" : "background: #dc3545;"}
+    `;
     document.body.appendChild(alert);
-    
+
     setTimeout(() => {
-        alert.remove();
+      alert.remove();
     }, 3000);
-}
+  }
 </script>
 
 <style>
-.tab-btn {
-    padding: 10px 20px;
-    border: 1px solid #ddd;
+  .tab-btn {
+    padding: 12px 24px;
+    border: 2px solid #007bff;
     background: #f8f9fa;
     cursor: pointer;
-    border-radius: 4px 4px 0 0;
-}
+    border-radius: 8px 8px 0 0;
+    transition: all 0.3s;
+    font-weight: bold;
+    color: #007bff;
+    font-size: 16px;
+  }
 
-.tab-btn.active {
-    background: white;
-    border-bottom: 1px solid white;
-}
+  .tab-btn.active {
+    background: #007bff;
+    color: white;
+    border-bottom: 2px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+  }
 
-.vault-section {
-    border: 1px solid #ddd;
+  .tab-btn:hover {
+    background: #e9ecef;
+    transform: translateY(-1px);
+  }
+
+  .tab-btn.active:hover {
+    background: #0056b3;
+  }
+
+  .vault-section {
+    border: 2px solid #007bff;
     border-top: none;
     padding: 20px;
-    border-radius: 0 0 4px 4px;
-}
+    border-radius: 0 0 8px 8px;
+    background: white;
+    box-shadow: 0 4px 8px rgba(0, 123, 255, 0.1);
+  }
 
-.form-inline {
+  .toggle-btn {
+    padding: 8px 16px;
+    background: #17a2b8;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+
+  .toggle-btn:hover {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+  }
+
+  .credentials-display {
+    background: #e8f5e8;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #2d5f2d;
+    border-left: 4px solid #28a745;
+    word-break: break-all;
+  }
+
+  .form-inline {
     display: flex;
     gap: 10px;
     margin-bottom: 20px;
-}
+  }
 
-.form-inline input {
+  .form-inline input {
     flex: 1;
-}
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+  }
 
-.password-item, .file-item {
+  .form-inline button {
+    padding: 8px 16px;
+    background: #007bff;
+    color: white;
+    border: 1px solid #007bff;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+
+  .password-item,
+  .file-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px;
+    padding: 15px;
     border: 1px solid #eee;
-    border-radius: 4px;
-    margin-bottom: 8px;
+    border-radius: 6px;
+    margin-bottom: 10px;
     background: #fafafa;
-}
+    transition: background 0.2s;
+  }
 
-.password-info, .file-info {
+  .password-item:hover,
+  .file-item:hover {
+    background: #f0f0f0;
+  }
+
+  .password-info,
+  .file-info {
     flex: 1;
-}
+  }
 
-.password-info small, .file-info small {
+  .password-info small,
+  .file-info small {
     display: block;
     color: #666;
-    font-size: 0.8em;
-}
+    font-size: 0.85em;
+    margin-top: 4px;
+  }
 
-.password-actions, .file-actions {
+  .password-actions,
+  .file-actions {
     display: flex;
-    gap: 5px;
-}
+    gap: 8px;
+  }
 
-.small {
-    padding: 5px 10px;
-    font-size: 0.8em;
-}
+  .action-btn {
+    padding: 8px 16px;
+    font-size: 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-weight: bold;
+    text-shadow: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
 
-.danger {
+  .view-btn {
+    background: #17a2b8;
+    color: white;
+  }
+
+  .view-btn:hover {
+    background: #138496;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+  }
+
+  .copy-btn {
+    background: #28a745;
+    color: white;
+  }
+
+  .copy-btn:hover {
+    background: #218838;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+  }
+
+  .download-btn {
+    background: #ffc107;
+    color: #212529;
+  }
+
+  .download-btn:hover {
+    background: #e0a800;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+  }
+
+  .delete-btn {
     background: #dc3545;
     color: white;
-    border: 1px solid #dc3545;
-}
+  }
 
-.secondary {
-    background: #6c757d;
-    color: white;
-    border: 1px solid #6c757d;
-}
+  .delete-btn:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+  }
+
+  .card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+  }
+
+  .card h2 {
+    margin-top: 0;
+    color: #333;
+    border-bottom: 2px solid #007bff;
+    padding-bottom: 10px;
+  }
+
+  .alert {
+    padding: 10px 15px;
+    border-radius: 4px;
+    margin: 10px 0;
+  }
+
+  .alert.success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+  }
+
+  .alert.danger {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+  }
 </style>
 {% endblock %}
